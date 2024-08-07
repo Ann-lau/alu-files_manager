@@ -1,23 +1,23 @@
 const crypto = require('crypto');
-const { dbClient } = require('../utils/db');
+const { dbClient } = require('../utils/db'); // Import the DB client instance
 
 class UsersController {
+  // Method to handle POST requests for creating a new user
   static async postNew(req, res) {
     const { email, password } = req.body;
 
-    // Input validation
     if (!email) {
       return res.status(400).json({ error: 'Missing email' });
     }
+
     if (!password) {
       return res.status(400).json({ error: 'Missing password' });
     }
 
     try {
-      const db = dbClient.db();
-      const usersCollection = db.collection('users');
+      const usersCollection = dbClient.client.db().collection('users');
 
-      // Check if email already exists
+      // Check if the email already exists
       const existingUser = await usersCollection.findOne({ email });
       if (existingUser) {
         return res.status(400).json({ error: 'Already exist' });
@@ -26,20 +26,17 @@ class UsersController {
       // Hash the password using SHA1
       const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
 
-      // Create the new user
-      const result = await usersCollection.insertOne({
-        email,
-        password: hashedPassword
-      });
+      // Create a new user
+      const result = await usersCollection.insertOne({ email, password: hashedPassword });
 
-      // Return the new user with email and id
-      res.status(201).json({
-        email: result.ops[0].email,
-        id: result.ops[0]._id
+      // Respond with the new user's email and id
+      return res.status(201).json({
+        id: result.insertedId,
+        email: email
       });
-    } catch (error) {
-      console.error('Error creating user:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    } catch (err) {
+      console.error('Error creating user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 }
