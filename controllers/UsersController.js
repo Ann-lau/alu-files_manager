@@ -1,45 +1,33 @@
 const crypto = require('crypto');
-const { dbClient } = require('../utils/db'); // Import the DB client instance
+const dbClient = require('../utils/dbClient');
+const redisClient = require('../utils/redisClient');
 
-class UsersController {
-  // Method to handle POST requests for creating a new user
-  static async postNew(req, res) {
-    const { email, password } = req.body;
+exports.getMe = async (req, res) => {
+  try {
+    const token = req.headers['x-token'];
 
-    if (!email) {
-      return res.status(400).json({ error: 'Missing email' });
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!password) {
-      return res.status(400).json({ error: 'Missing password' });
+    const redisKey = `auth_${token}`;
+    const userId = await redisClient.get(redisKey);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    try {
-      const usersCollection = dbClient.client.db().collection('users');
+    const db = dbClient.db('files_manager');
+    const user = await db.collection('users').findOne({ _id: new db.ObjectId(userId) });
 
-      // Check if the email already exists
-      const existingUser = await usersCollection.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ error: 'Already exist' });
-      }
-
-      // Hash the password using SHA1
-      const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
-
-      // Create a new user
-      const result = await usersCollection.insertOne({ email, password: hashedPassword });
-
-      // Respond with the new user's email and id
-      return res.status(201).json({
-        id: result.insertedId,
-        email: email
-      });
-    } catch (err) {
-      console.error('Error creating user:', err);
-      return res.status(500).json({ error: 'Internal server error' });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    res.status(200).json({ id: user._id.toString(), email: user.email });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-module.exports = UsersController;
+};
 
