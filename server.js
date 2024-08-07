@@ -1,12 +1,14 @@
 const express = require('express');
-require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const routes = require('./routes');
+const port = process.env.PORT || 5000;
+const routes = require('./routes/index');
+
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: false, limit: '20mb' }));
 
 app.use('/', routes);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
