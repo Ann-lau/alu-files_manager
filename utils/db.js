@@ -1,31 +1,38 @@
 const { MongoClient } = require('mongodb');
+require('dotenv').config();
 
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
     const port = process.env.DB_PORT || 27017;
     const database = process.env.DB_DATABASE || 'files_manager';
-    const url = `mongodb://${host}:${port}/${database}`;
+    const url = `mongodb://${host}:${port}`;
 
-    this.client = new MongoClient(url, { useUnifiedTopology: true });
-    this.client.connect();
-    this.db = this.client.db(database);
+    this.client = new MongoClient(url, { useNewUrlParser: true, useUnifiedTopology: true });
+    this.client.connect((err) => {
+      if (err) {
+        console.error('MongoDB connection error:', err);
+      } else {
+        this.db = this.client.db(database);
+        console.log('MongoDB connected successfully');
+      }
+    });
   }
 
   isAlive() {
-    return this.client.topology.isConnected();
+    return this.client.isConnected();
   }
 
   async nbUsers() {
-    const count = await this.db.collection('users').countDocuments();
-    return count;
+    return this.db.collection('users').countDocuments();
   }
 
   async nbFiles() {
-    const count = await this.db.collection('files').countDocuments();
-    return count;
+    return this.db.collection('files').countDocuments();
   }
 }
 
 const dbClient = new DBClient();
+
 module.exports = dbClient;
+
